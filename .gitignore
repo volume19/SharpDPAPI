@@ -1,9 +1,13 @@
-.idea
-.vs
-*.user
-[Dd]ebug/
-[Rr]elease/
-[Bb]in/
-[Oo]bj/
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
-*.csproj.user
+Thumbs.db
