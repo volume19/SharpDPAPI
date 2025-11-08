@@ -114,12 +114,9 @@ impl BlobCommand {
 fn display_decrypted_data(data: &[u8]) {
     // Check if data is likely Unicode text
     if is_unicode_text(data) {
-        match from_utf16le(data) {
-            Ok(text) => {
-                println!("    dec(blob)        : {}", text.trim_end_matches('\0'));
-                return;
-            }
-            Err(_) => {}
+        if let Ok(text) = from_utf16le(data) {
+            println!("    dec(blob)        : {}", text.trim_end_matches('\0'));
+            return;
         }
     }
 
@@ -140,7 +137,7 @@ fn display_decrypted_data(data: &[u8]) {
 }
 
 fn is_unicode_text(data: &[u8]) -> bool {
-    if data.len() < 2 || data.len() % 2 != 0 {
+    if data.len() < 2 || !data.len().is_multiple_of(2) {
         return false;
     }
 

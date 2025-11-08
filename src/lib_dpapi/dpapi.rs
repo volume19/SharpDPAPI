@@ -5,8 +5,31 @@ use std::collections::HashMap;
 
 use super::{Crypto, Helpers};
 
+/// DPAPI (Data Protection API) operations for parsing and decrypting protected data.
+///
+/// The Dpapi struct provides methods for working with Windows DPAPI encrypted blobs,
+/// including parsing blob structure and decrypting data using masterkeys.
 pub struct Dpapi;
 
+/// Represents a parsed DPAPI blob structure.
+///
+/// A DPAPI blob contains encrypted data protected by a masterkey. This structure
+/// holds all the metadata and encrypted content from a DPAPI-protected blob.
+///
+/// # Fields
+/// - `version`: DPAPI blob version (typically 1)
+/// - `provider_guid`: GUID of the crypto provider
+/// - `mk_version`: Masterkey version number
+/// - `mk_guid`: GUID of the masterkey used for encryption
+/// - `flags`: Encryption flags
+/// - `description`: Optional description string
+/// - `alg_crypt`: Encryption algorithm ID (e.g., 26115 for 3DES, 26128 for AES-256)
+/// - `alg_crypt_len`: Length of encrypted key
+/// - `salt`: Random salt for key derivation
+/// - `alg_hash`: Hash algorithm ID (e.g., 32772 for SHA1, 32782 for SHA-512)
+/// - `hmac`: HMAC for integrity verification
+/// - `ciphertext`: Encrypted data payload
+/// - `sign`: Digital signature (if present)
 #[derive(Debug)]
 pub struct DpapiBlob {
     pub version: u32,
@@ -25,7 +48,23 @@ pub struct DpapiBlob {
 }
 
 impl Dpapi {
-    /// Parse and describe a DPAPI blob
+    /// Parse and describe a DPAPI blob from raw bytes.
+    ///
+    /// # Arguments
+    /// * `blob` - Raw DPAPI blob bytes to parse
+    ///
+    /// # Returns
+    /// A `DpapiBlob` structure containing parsed metadata and encrypted data
+    ///
+    /// # Errors
+    /// Returns an error if the blob is too small or has invalid structure
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let blob_data = fs::read("encrypted.bin")?;
+    /// let dpapi_blob = Dpapi::describe_blob(&blob_data)?;
+    /// println!("Masterkey GUID: {}", dpapi_blob.mk_guid);
+    /// ```
     pub fn describe_blob(blob: &[u8]) -> Result<DpapiBlob> {
         if blob.len() < 24 {
             return Err(anyhow!("Blob too small to be valid DPAPI blob"));

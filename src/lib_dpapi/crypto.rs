@@ -9,10 +9,30 @@ use super::helpers::Helpers;
 
 type HmacSha512 = Hmac<Sha512>;
 
+/// Cryptographic operations for DPAPI blob encryption/decryption.
+///
+/// Provides implementations of Microsoft's DPAPI cryptographic algorithms including:
+/// - 3DES and AES decryption
+/// - SHA1 and SHA512 key derivation
+/// - HMAC-based key derivation functions
+/// - LSA-specific AES decryption
 pub struct Crypto;
 
 impl Crypto {
-    /// Decrypt blob using 3DES or AES
+    /// Decrypt a DPAPI blob using the specified algorithm.
+    ///
+    /// # Arguments
+    /// * `ciphertext` - The encrypted data to decrypt
+    /// * `key` - The decryption key
+    /// * `alg_crypt` - Algorithm ID (26115 for 3DES, 26128 for AES-256)
+    ///
+    /// # Returns
+    /// Decrypted plaintext data
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let plaintext = Crypto::decrypt_blob(&ciphertext, &key, 26128)?;
+    /// ```
     pub fn decrypt_blob(ciphertext: &[u8], key: &[u8], alg_crypt: i32) -> Result<Vec<u8>> {
         match alg_crypt {
             26115 => {
@@ -40,7 +60,7 @@ impl Crypto {
         let mut result = ciphertext.to_vec();
 
         // Padding removal (simplified)
-        while result.len() > 0 && result[result.len() - 1] == 0 {
+        while !result.is_empty() && result[result.len() - 1] == 0 {
             result.pop();
         }
 
@@ -60,7 +80,7 @@ impl Crypto {
         let mut result = ciphertext.to_vec();
 
         // Padding removal (simplified)
-        while result.len() > 0 && result[result.len() - 1] == 0 {
+        while !result.is_empty() && result[result.len() - 1] == 0 {
             result.pop();
         }
 
@@ -172,7 +192,7 @@ impl Crypto {
         let mut result = data.to_vec();
 
         // Padding removal (simplified)
-        while result.len() > 0 && result[result.len() - 1] == 0 {
+        while !result.is_empty() && result[result.len() - 1] == 0 {
             result.pop();
         }
 
@@ -187,7 +207,7 @@ impl Crypto {
 
         // Simplified implementation
         // Full implementation would decrypt in 16-byte chunks
-        let chunks = (data.len() + 15) / 16;
+        let chunks = data.len().div_ceil(16);
         let mut plaintext = vec![0u8; chunks * 16];
 
         // For now, just copy the data (placeholder)

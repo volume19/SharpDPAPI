@@ -1,17 +1,43 @@
-// Helper functions ported from C#
+//! Helper utilities for DPAPI operations.
+//!
+//! This module provides various utility functions for:
+//! - Hex string conversion and manipulation
+//! - GUID validation and formatting
+//! - File parsing (masterkey files)
+//! - String encoding/escaping (CSV, JSON)
+//! - Binary data operations
 
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::OnceLock;
 use regex::Regex;
 
+// Compile GUID regex only once using lazy initialization
+static GUID_REGEX: OnceLock<Regex> = OnceLock::new();
+
+/// Returns a reference to the compiled GUID validation regex.
+///
+/// The regex is compiled once on first use and cached for subsequent calls.
+fn guid_regex() -> &'static Regex {
+    GUID_REGEX.get_or_init(|| {
+        Regex::new(
+            r"^(\{{0,1}([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}\}{0,1})$"
+        ).expect("Failed to compile GUID regex")
+    })
+}
+
+/// Collection of helper utilities for DPAPI operations.
+///
+/// Provides static methods for common operations like hex conversion,
+/// GUID validation, file parsing, and data manipulation.
 pub struct Helpers;
 
 impl Helpers {
     /// Convert hex string to byte array
     pub fn hex_to_bytes(hex: &str) -> Result<Vec<u8>> {
-        let hex = if hex.len() % 2 != 0 {
+        let hex = if !hex.len().is_multiple_of(2) {
             format!("0{}", hex)
         } else {
             hex.to_string()
@@ -41,7 +67,7 @@ impl Helpers {
 
     /// Pad array to specified length
     pub fn pad_to_length(input: &[u8], len: usize) -> Vec<u8> {
-        if input.len() % len != 0 {
+        if !input.len().is_multiple_of(len) {
             let pad_len = len - (input.len() % len);
             let mut result = vec![0u8; pad_len];
             result.extend_from_slice(input);
@@ -102,10 +128,7 @@ impl Helpers {
 
     /// Check if string is a valid GUID
     pub fn is_guid(value: &str) -> bool {
-        let guid_regex = Regex::new(
-            r"^(\{{0,1}([0-9a-fA-F]){8}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){4}-([0-9a-fA-F]){12}\}{0,1})$"
-        ).unwrap();
-        guid_regex.is_match(value)
+        guid_regex().is_match(value)
     }
 
     /// Clean string for CSV output
@@ -155,13 +178,8 @@ impl Helpers {
             return None;
         }
 
-        for i in offset..=array.len() - pattern.len() {
-            if &array[i..i + pattern.len()] == pattern {
-                return Some(i);
-            }
-        }
-
-        None
+        (offset..=array.len() - pattern.len())
+            .find(|&i| &array[i..i + pattern.len()] == pattern)
     }
 
     /// Split string into chunks of specified length
