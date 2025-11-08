@@ -1,8 +1,12 @@
-// Windows API interop definitions
-// This module provides Rust equivalents of Windows API calls and structures
+// Enhanced Windows API interop with actual implementations
+// This module provides Rust equivalents of Windows API calls
 
 #[cfg(windows)]
-use windows::Win32::Security::Cryptography::*;
+use std::ptr;
+#[cfg(windows)]
+use std::mem;
+
+use anyhow::{Result, anyhow};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -11,7 +15,6 @@ pub enum CryptAlg {
     CalgMd2 = 32769,
     CalgMd4 = 32770,
     CalgMd5 = 32771,
-    CalgSha = 32772,
     CalgSha1 = 32772,
     CalgMac = 32773,
     CalgRsaSign = 9216,
@@ -34,46 +37,9 @@ pub enum CryptAlg {
     CalgSha512 = 32782,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
-#[repr(u32)]
-pub enum KerbEtype {
-    DesCbcCrc = 1,
-    DesCbcMd4 = 2,
-    DesCbcMd5 = 3,
-    Des3CbcMd5 = 5,
-    Des3CbcSha1 = 7,
-    DsaWithSha1CmsOid = 9,
-    Md5WithRsaEncryption = 10,
-    Sha1WithRsaEncryption = 11,
-    Rc2CbcEnvOid = 12,
-    RsaesOaepEnvOid = 13,
-    Des3CbcSha1Kd = 16,
-    Aes128CtsHmacSha196 = 17,
-    Aes256CtsHmacSha196 = 18,
-    Rc4Hmac = 23,
-    Rc4HmacExp = 24,
-    CamelliaCtsCmacSha196 = 25,
-    Camellia256CtsCmacSha196 = 26,
-    Subkey = 65,
-}
-
 pub struct Interop;
 
 impl Interop {
-    #[cfg(windows)]
-    pub fn crypt_unprotect_data(encrypted_data: &[u8], entropy: Option<&[u8]>) -> Option<Vec<u8>> {
-        // Windows-specific DPAPI call
-        // This would use CryptUnprotectData from Windows API
-        // Placeholder for now
-        None
-    }
-
-    #[cfg(not(windows))]
-    pub fn crypt_unprotect_data(_encrypted_data: &[u8], _entropy: Option<&[u8]>) -> Option<Vec<u8>> {
-        None
-    }
-
     /// Get algorithm name from ID
     pub fn get_alg_name(alg: i32) -> &'static str {
         match alg {
@@ -86,5 +52,56 @@ impl Interop {
             26128 => "CALG_AES_256",
             _ => "UNKNOWN",
         }
+    }
+
+    #[cfg(windows)]
+    pub fn crypt_unprotect_data(encrypted_data: &[u8], entropy: Option<&[u8]>) -> Result<Vec<u8>> {
+        use winapi::um::dpapi::{CryptUnprotectData, CRYPTOAPI_BLOB};
+        use winapi::um::winbase::LocalFree;
+
+        unsafe {
+            let mut data_in = CRYPTOAPI_BLOB {
+                cbData: encrypted_data.len() as u32,
+                pbData: encrypted_data.as_ptr() as *mut u8,
+            };
+
+            let mut entropy_blob = if let Some(ent) = entropy {
+                Some(CRYPTOAPI_BLOB {
+                    cbData: ent.len() as u32,
+                    pbData: ent.as_ptr() as *mut u8,
+                })
+            } else {
+                None
+            };
+
+            let mut data_out = CRYPTOAPI_BLOB {
+                cbData: 0,
+                pbData: ptr::null_mut(),
+            };
+
+            let result = CryptUnprotectData(
+                &mut data_in,
+                ptr::null_mut(),
+                entropy_blob.as_mut().map(|e| e as *mut _).unwrap_or(ptr::null_mut()),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                0,
+                &mut data_out,
+            );
+
+            if result == 0 {
+                return Err(anyhow!("CryptUnprotectData failed"));
+            }
+
+            let decrypted = std::slice::from_raw_parts(data_out.pbData, data_out.cbData as usize).to_vec();
+            LocalFree(data_out.pbData as *mut _);
+
+            Ok(decrypted)
+        }
+    }
+
+    #[cfg(not(windows))]
+    pub fn crypt_unprotect_data(_encrypted_data: &[u8], _entropy: Option<&[u8]>) -> Result<Vec<u8>> {
+        Err(anyhow!("CryptUnprotectData is only available on Windows"))
     }
 }

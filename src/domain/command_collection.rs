@@ -3,12 +3,14 @@
 use std::collections::HashMap;
 use anyhow::Result;
 
+use crate::commands::{BlobCommand, MasterkeysCommand};
+
 pub struct CommandCollection;
 
 impl CommandCollection {
     pub fn execute_command(
         command_name: &str,
-        _arguments: &HashMap<String, String>,
+        arguments: &HashMap<String, String>,
     ) -> Result<bool> {
         if command_name.is_empty() {
             return Ok(false);
@@ -21,8 +23,11 @@ impl CommandCollection {
                 Ok(true)
             }
             "blob" => {
-                println!("[*] Action: Describe DPAPI blob");
-                println!("[!] Not yet implemented in Rust port");
+                BlobCommand::execute(arguments)?;
+                Ok(true)
+            }
+            "masterkeys" => {
+                MasterkeysCommand::execute(arguments)?;
                 Ok(true)
             }
             "credentials" => {
@@ -52,11 +57,6 @@ impl CommandCollection {
             }
             "machinevaults" => {
                 println!("[*] Action: Machine DPAPI Vault Triage");
-                println!("[!] Not yet implemented in Rust port");
-                Ok(true)
-            }
-            "masterkeys" => {
-                println!("[*] Action: Triage User Masterkey Files");
                 println!("[!] Not yet implemented in Rust port");
                 Ok(true)
             }

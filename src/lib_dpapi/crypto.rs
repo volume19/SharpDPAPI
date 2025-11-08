@@ -1,7 +1,7 @@
 // Cryptographic operations for DPAPI
 
 use sha1::{Sha1, Digest as Sha1Digest};
-use sha2::{Sha512, Digest};
+use sha2::Sha512;
 use hmac::Hmac;
 use anyhow::{Result, anyhow};
 

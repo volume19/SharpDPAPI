@@ -1,6 +1,5 @@
 // Core DPAPI library modules
 
-#[cfg(windows)]
 pub mod interop;
 pub mod crypto;
 pub mod dpapi;
@@ -14,4 +13,5 @@ pub mod triage;
 
 // Re-exports
 pub use crypto::Crypto;
+pub use dpapi::Dpapi;
 pub use helpers::Helpers;
